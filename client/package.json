@@ -1,0 +1,20 @@
+{
+  "name": "@lucksino/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "tsc && NODE_OPTIONS=\"--max-old-space-size=2048\" vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "colyseus.js": "^0.15.0",
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.4.5",
+    "vite": "^5.1.6"
+  }
+}

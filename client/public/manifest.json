@@ -1,0 +1,27 @@
+{
+  "name": "Lucksino — Social Casino",
+  "short_name": "Lucksino",
+  "description": "Free-to-play social casino with multiplayer games. Play Slots, Plinko, Crash and more with friends!",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1a0a2e",
+  "theme_color": "#ffd700",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
