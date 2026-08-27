@@ -246,15 +246,14 @@ export class PlinkoScene extends Phaser.Scene {
     const { width } = this.cameras.main;
     const cx = width / 2;
 
-    // Animate ball falling
+    // Animate ball falling with smooth physics-like motion
     this.ball.setPosition(cx, this.pegStartY - 20).setVisible(true);
 
     let currentRow = 0;
-    let positionOffset = 0; // Tracks lateral position
+    let positionOffset = 0;
 
     const animateStep = () => {
       if (currentRow >= data.path.length) {
-        // Ball reached bottom
         this.time.delayedCall(300, () => {
           this.showResult(data);
         });
@@ -268,17 +267,19 @@ export class PlinkoScene extends Phaser.Scene {
       const pegsInRow = currentRow + 2;
       const rowWidth = (pegsInRow - 1) * this.pegSpacingX;
       const rowStartX = cx - rowWidth / 2;
-      
-      // Ball position between pegs
-      const targetX = rowStartX + positionOffset * this.pegSpacingX + (direction === 1 ? this.pegSpacingX * 0.3 : -this.pegSpacingX * 0.3);
+
+      // Ball position between pegs — smooth lateral offset
+      const lateralNudge = direction === 1 ? this.pegSpacingX * 0.3 : -this.pegSpacingX * 0.3;
+      const targetX = rowStartX + positionOffset * this.pegSpacingX + lateralNudge;
       const targetY = this.pegStartY + currentRow * this.pegSpacingY + this.pegSpacingY * 0.5;
 
+      // Use Cubic ease for smooth, natural-feeling ball physics
       this.tweens.add({
         targets: this.ball,
         x: targetX,
         y: targetY,
-        duration: 120 + currentRow * 8,
-        ease: "Bounce.easeOut",
+        duration: 150,
+        ease: "Cubic.easeIn",
         onComplete: () => {
           soundManager.playPlinkoBounce();
           currentRow++;

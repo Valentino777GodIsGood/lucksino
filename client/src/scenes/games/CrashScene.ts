@@ -34,11 +34,12 @@ export class CrashScene extends Phaser.Scene {
   private graphY: number = 0;
   private graphW: number = 0;
   private graphH: number = 0;
-  private points: { x: number; y: number }[] = [];
+  private points: { mult: number; time: number }[] = [];
   private currentPhase: string = "waiting";
   private currentMultiplier: number = 1.0;
   private lastTickSound: number = 0;
   private autoCashoutInput!: Phaser.GameObjects.Text;
+  private startTime: number = 0;
 
   constructor() {
     super({ key: "CrashScene" });
@@ -200,12 +201,6 @@ export class CrashScene extends Phaser.Scene {
       text.on("pointerdown", () => {
         this.autoCashout = val;
         soundManager.playClick();
-        // Update colors
-        autoOptions.forEach((v, j) => {
-          const t = text.scene.children.list.find(
-            (c: any) => c === text.scene.children.list[text.scene.children.list.indexOf(text) - i + j]
-          );
-        });
       });
     });
 
@@ -306,6 +301,7 @@ export class CrashScene extends Phaser.Scene {
       this.cashedOut = false;
       this.currentMultiplier = 1.0;
       this.points = [];
+      this.startTime = 0;
       this.graphGraphics.clear();
       this.multiplierText.setText("1.00x").setColor("#2ed573");
       this.statusText.setText("Waiting for bets...");
@@ -324,7 +320,6 @@ export class CrashScene extends Phaser.Scene {
     });
 
     room.onMessage("crash_state", (data: any) => {
-      // Initial state sync
       if (data.history && data.history.length > 0) {
         this.updateHistory(data.history);
       }
@@ -335,6 +330,7 @@ export class CrashScene extends Phaser.Scene {
       const crash = room.state.crash;
       if (crash.phase === "running" && this.currentPhase !== "running") {
         this.currentPhase = "running";
+        this.startTime = Date.now();
         this.statusText.setText("🚀 Flying...");
       }
 
@@ -351,7 +347,7 @@ export class CrashScene extends Phaser.Scene {
           this.multiplierText.setColor("#2ed573");
         }
 
-        // Update graph
+        // Update graph with dynamic scaling
         this.updateGraph(crash.multiplier);
 
         // Periodic tick sound
@@ -370,15 +366,17 @@ export class CrashScene extends Phaser.Scene {
   }
 
   private updateGraph(multiplier: number): void {
-    // Map multiplier to graph position
-    const maxDisplayMult = 10;
-    const normalizedMult = Math.min(multiplier, maxDisplayMult);
-    const progress = this.points.length / 200; // Horizontal progress
+    const elapsed = Date.now() - this.startTime;
+    this.points.push({ mult: multiplier, time: elapsed });
 
-    const x = this.graphX + 20 + progress * (this.graphW - 40);
-    const y = this.graphY + this.graphH - 20 - ((normalizedMult - 1) / (maxDisplayMult - 1)) * (this.graphH - 40);
+    // Dynamic axis scaling — always keep the line visible
+    const maxMult = Math.max(2, multiplier * 1.2);
+    const maxTime = Math.max(5000, elapsed * 1.1);
 
-    this.points.push({ x, y });
+    const padX = 20;
+    const padY = 20;
+    const drawW = this.graphW - padX * 2;
+    const drawH = this.graphH - padY * 2;
 
     // Redraw line
     this.graphGraphics.clear();
@@ -386,16 +384,25 @@ export class CrashScene extends Phaser.Scene {
     this.graphGraphics.beginPath();
 
     if (this.points.length > 1) {
-      this.graphGraphics.moveTo(this.points[0].x, this.points[0].y);
+      const firstPt = this.points[0];
+      const fx = this.graphX + padX + (firstPt.time / maxTime) * drawW;
+      const fy = this.graphY + this.graphH - padY - ((firstPt.mult - 1) / (maxMult - 1)) * drawH;
+      this.graphGraphics.moveTo(fx, fy);
+
       for (let i = 1; i < this.points.length; i++) {
-        this.graphGraphics.lineTo(this.points[i].x, this.points[i].y);
+        const pt = this.points[i];
+        const px = this.graphX + padX + (pt.time / maxTime) * drawW;
+        const py = this.graphY + this.graphH - padY - ((pt.mult - 1) / (maxMult - 1)) * drawH;
+        this.graphGraphics.lineTo(px, py);
       }
       this.graphGraphics.strokePath();
     }
 
-    // Move rocket
-    const lastPoint = this.points[this.points.length - 1];
-    this.rocketEmoji.setPosition(lastPoint.x - 14, lastPoint.y - 14);
+    // Move rocket to last point
+    const lastPt = this.points[this.points.length - 1];
+    const rocketX = this.graphX + padX + (lastPt.time / maxTime) * drawW;
+    const rocketY = this.graphY + this.graphH - padY - ((lastPt.mult - 1) / (maxMult - 1)) * drawH;
+    this.rocketEmoji.setPosition(rocketX - 14, rocketY - 14);
   }
 
   private updateHistory(history: number[]): void {

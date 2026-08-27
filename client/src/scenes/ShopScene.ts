@@ -38,6 +38,8 @@ export class ShopScene extends Phaser.Scene {
   private itemContainer!: Phaser.GameObjects.Container;
   private coinText!: Phaser.GameObjects.Text;
   private categoryButtons: Phaser.GameObjects.Container[] = [];
+  private catalogHandler: ((data: any) => void) | null = null;
+  private purchaseHandler: ((data: any) => void) | null = null;
 
   constructor() {
     super({ key: "ShopScene" });
@@ -45,6 +47,13 @@ export class ShopScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.cameras.main;
+
+    // Reset state on each open (Bug 5 fix)
+    this.items = [];
+    this.ownedItems = [];
+    this.selectedCategory = "outfit";
+    this.scrollY = 0;
+    this.categoryButtons = [];
 
     // Dark overlay background
     const bg = this.add.graphics();
@@ -157,24 +166,43 @@ export class ShopScene extends Phaser.Scene {
       this.refreshItems();
     });
 
-    // Request catalog from server
+    // Request catalog from server — fresh on every open
     const room = colyseusClient.getRoom();
     if (room) {
-      room.send("shop_catalog");
+      // Remove any previous handlers to prevent duplication
+      if (this.catalogHandler) {
+        room.onMessage("shop_catalog", this.catalogHandler);
+      }
+      if (this.purchaseHandler) {
+        room.onMessage("shop_purchased", this.purchaseHandler);
+      }
 
-      room.onMessage("shop_catalog", (data: { items: ShopItem[]; owned: string[] }) => {
+      this.catalogHandler = (data: { items: ShopItem[]; owned: string[] }) => {
         this.items = data.items;
         this.ownedItems = data.owned;
+        // Persist owned items to registry so AvatarScene can read them
+        this.registry.set("ownedCosmeticIds", [...this.ownedItems]);
+        this.registry.set("shopItems", [...this.items]);
         this.refreshDisplay();
-      });
+      };
 
-      room.onMessage("shop_purchased", (data: { itemId: string; newBalance: number }) => {
-        this.ownedItems.push(data.itemId);
+      this.purchaseHandler = (data: { itemId: string; newBalance: number }) => {
+        if (!this.ownedItems.includes(data.itemId)) {
+          this.ownedItems.push(data.itemId);
+        }
         this.coinText.setText(`🪙 ${data.newBalance}`);
+        // Update registry
+        this.registry.set("ownedCosmeticIds", [...this.ownedItems]);
         this.showToast("Purchase successful! 🎉", COLORS.SUCCESS_GREEN);
         soundManager.playWin();
         this.refreshItems();
-      });
+      };
+
+      room.onMessage("shop_catalog", this.catalogHandler);
+      room.onMessage("shop_purchased", this.purchaseHandler);
+
+      // Always request catalog fresh
+      room.send("shop_catalog");
 
       // Update coin display
       const myPlayer = room.state.players.get(room.sessionId);

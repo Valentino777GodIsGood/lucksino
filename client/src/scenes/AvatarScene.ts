@@ -29,6 +29,18 @@ const DEFAULT_OUTFITS = [
   { id: "outfit_crimson", value: "#e74c3c", label: "Crimson" },
 ];
 
+// All hat/accessory options that can appear in customization
+const ALL_HATS = [
+  { id: "hat_crown", value: "crown", label: "👑 Crown" },
+  { id: "hat_tophat", value: "tophat", label: "🎩 Top Hat" },
+  { id: "hat_bunny", value: "bunny", label: "🐰 Bunny Ears" },
+];
+
+const ALL_ACCESSORIES = [
+  { id: "acc_sunglasses", value: "sunglasses", label: "😎 Sunglasses" },
+  { id: "acc_monocle", value: "monocle", label: "🧐 Monocle" },
+];
+
 export class AvatarScene extends Phaser.Scene {
   private previewGraphics!: Phaser.GameObjects.Graphics;
   private currentOutfit: string = "#e74c3c";
@@ -36,6 +48,7 @@ export class AvatarScene extends Phaser.Scene {
   private currentSkin: string = "#ffdbac";
   private currentAccessory: string = "none";
   private currentHat: string = "none";
+  private ownedItemIds: string[] = [];
 
   constructor() {
     super({ key: "AvatarScene" });
@@ -57,6 +70,9 @@ export class AvatarScene extends Phaser.Scene {
       }
     }
 
+    // Load owned items from registry (populated by ShopScene)
+    this.ownedItemIds = this.registry.get("ownedCosmeticIds") || [];
+
     // Dark overlay
     const bg = this.add.graphics();
     bg.fillStyle(0x000000, 0.9);
@@ -64,7 +80,7 @@ export class AvatarScene extends Phaser.Scene {
 
     // Panel
     const panelW = 500;
-    const panelH = 600;
+    const panelH = 620;
     const panelX = (width - panelW) / 2;
     const panelY = (height - panelH) / 2;
 
@@ -93,10 +109,10 @@ export class AvatarScene extends Phaser.Scene {
 
     // Preview area
     this.previewGraphics = this.add.graphics();
-    this.drawPreview(width / 2, panelY + 130);
+    this.drawPreview(width / 2, panelY + 120);
 
     // === Skin Tone Section ===
-    this.add.text(panelX + 30, panelY + 210, "Skin Tone", {
+    this.add.text(panelX + 30, panelY + 195, "Skin Tone", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "14px",
       color: "#c4b5fd",
@@ -105,7 +121,7 @@ export class AvatarScene extends Phaser.Scene {
 
     SKIN_TONES.forEach((skin, i) => {
       const sx = panelX + 30 + i * 50;
-      const sy = panelY + 240;
+      const sy = panelY + 220;
       const color = Phaser.Display.Color.HexStringToColor(skin.value).color;
 
       const swatch = this.add.graphics();
@@ -125,7 +141,7 @@ export class AvatarScene extends Phaser.Scene {
     });
 
     // === Hair Color Section ===
-    this.add.text(panelX + 30, panelY + 290, "Hair Color", {
+    this.add.text(panelX + 30, panelY + 265, "Hair Color", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "14px",
       color: "#c4b5fd",
@@ -133,10 +149,19 @@ export class AvatarScene extends Phaser.Scene {
     });
 
     const allHairOptions = [...DEFAULT_HAIR_COLORS];
-    // We'll show what they have; advanced colors come from the shop
+    // Add purchased hair colors from shop items
+    const shopItems: any[] = this.registry.get("shopItems") || [];
+    shopItems.forEach((item: any) => {
+      if (item.category === "hair" && this.ownedItemIds.includes(item.id)) {
+        if (!allHairOptions.find(h => h.value === item.value)) {
+          allHairOptions.push({ id: item.id, value: item.value, label: item.name });
+        }
+      }
+    });
+
     allHairOptions.forEach((hair, i) => {
       const sx = panelX + 30 + i * 50;
-      const sy = panelY + 320;
+      const sy = panelY + 290;
       const color = Phaser.Display.Color.HexStringToColor(hair.value).color;
 
       const swatch = this.add.graphics();
@@ -155,15 +180,17 @@ export class AvatarScene extends Phaser.Scene {
       });
     });
 
-    this.add.text(panelX + 30 + DEFAULT_HAIR_COLORS.length * 50 + 10, panelY + 332, "More in Shop →", {
-      fontFamily: "Nunito, sans-serif",
-      fontSize: "12px",
-      color: "#ffd700",
-      fontStyle: "italic",
-    });
+    if (allHairOptions.length <= DEFAULT_HAIR_COLORS.length) {
+      this.add.text(panelX + 30 + allHairOptions.length * 50 + 10, panelY + 302, "More in Shop →", {
+        fontFamily: "Nunito, sans-serif",
+        fontSize: "12px",
+        color: "#ffd700",
+        fontStyle: "italic",
+      });
+    }
 
     // === Outfit Color Section ===
-    this.add.text(panelX + 30, panelY + 375, "Outfit Color", {
+    this.add.text(panelX + 30, panelY + 340, "Outfit Color", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "14px",
       color: "#c4b5fd",
@@ -173,7 +200,7 @@ export class AvatarScene extends Phaser.Scene {
     const defaultOutfitColors = ["#e74c3c", "#3498db", "#2ecc71", "#9b59b6", "#f39c12", "#1abc9c"];
     defaultOutfitColors.forEach((color, i) => {
       const sx = panelX + 30 + i * 50;
-      const sy = panelY + 405;
+      const sy = panelY + 365;
       const hex = Phaser.Display.Color.HexStringToColor(color).color;
 
       const swatch = this.add.graphics();
@@ -192,20 +219,127 @@ export class AvatarScene extends Phaser.Scene {
       });
     });
 
-    // === Accessories info ===
-    this.add.text(panelX + 30, panelY + 465, "Accessory: " + (this.currentAccessory === "none" ? "None" : this.currentAccessory), {
+    // === Hat Section (Bug 6 & 7 fix) ===
+    this.add.text(panelX + 30, panelY + 420, "Hat", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "14px",
       color: "#c4b5fd",
+      fontStyle: "bold",
     });
 
-    this.add.text(panelX + 30, panelY + 490, "Hat: " + (this.currentHat === "none" ? "None" : this.currentHat), {
+    // "None" option
+    const noneHatX = panelX + 30;
+    const hatY = panelY + 445;
+    const noneHatBg = this.add.graphics();
+    const hatNoneSelected = this.currentHat === "none";
+    noneHatBg.fillStyle(0x44318d, 0.8);
+    noneHatBg.fillRoundedRect(noneHatX, hatY, 50, 32, 6);
+    if (hatNoneSelected) {
+      noneHatBg.lineStyle(2, COLORS.WARM_GOLD, 1);
+      noneHatBg.strokeRoundedRect(noneHatX, hatY, 50, 32, 6);
+    }
+    const noneHatText = this.add.text(noneHatX + 25, hatY + 16, "None", {
+      fontFamily: "Nunito, sans-serif",
+      fontSize: "11px",
+      color: hatNoneSelected ? "#ffd700" : "#c4b5fd",
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    noneHatText.on("pointerdown", () => {
+      this.currentHat = "none";
+      this.applyChanges();
+      this.scene.restart();
+    });
+
+    ALL_HATS.forEach((hat, i) => {
+      const hx = panelX + 90 + i * 65;
+      const isOwned = this.isItemOwned("hat", hat.value);
+      const isActive = this.currentHat === hat.value;
+
+      const hatBg = this.add.graphics();
+      hatBg.fillStyle(isOwned ? 0x44318d : 0x222222, 0.8);
+      hatBg.fillRoundedRect(hx, hatY, 58, 32, 6);
+      if (isActive) {
+        hatBg.lineStyle(2, COLORS.WARM_GOLD, 1);
+        hatBg.strokeRoundedRect(hx, hatY, 58, 32, 6);
+      }
+
+      const labelText = isOwned ? hat.label.split(" ")[0] : `🔒 ${hat.label.split(" ")[0]}`;
+      const hatText = this.add.text(hx + 29, hatY + 16, labelText, {
+        fontFamily: "Nunito, sans-serif",
+        fontSize: "11px",
+        color: isOwned ? (isActive ? "#ffd700" : "#c4b5fd") : "#666666",
+      }).setOrigin(0.5);
+
+      if (isOwned) {
+        hatText.setInteractive({ useHandCursor: true });
+        hatText.on("pointerdown", () => {
+          this.currentHat = hat.value;
+          this.applyChanges();
+          this.scene.restart();
+        });
+      }
+    });
+
+    // === Accessory Section (Bug 6 & 7 fix) ===
+    this.add.text(panelX + 30, panelY + 490, "Accessory", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "14px",
       color: "#c4b5fd",
+      fontStyle: "bold",
     });
 
-    this.add.text(panelX + 30, panelY + 520, "💡 Buy more styles from the Cosmetics Boutique!", {
+    const accY = panelY + 515;
+    // "None" option
+    const noneAccBg = this.add.graphics();
+    const accNoneSelected = this.currentAccessory === "none";
+    noneAccBg.fillStyle(0x44318d, 0.8);
+    noneAccBg.fillRoundedRect(panelX + 30, accY, 50, 32, 6);
+    if (accNoneSelected) {
+      noneAccBg.lineStyle(2, COLORS.WARM_GOLD, 1);
+      noneAccBg.strokeRoundedRect(panelX + 30, accY, 50, 32, 6);
+    }
+    const noneAccText = this.add.text(panelX + 55, accY + 16, "None", {
+      fontFamily: "Nunito, sans-serif",
+      fontSize: "11px",
+      color: accNoneSelected ? "#ffd700" : "#c4b5fd",
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    noneAccText.on("pointerdown", () => {
+      this.currentAccessory = "none";
+      this.applyChanges();
+      this.scene.restart();
+    });
+
+    ALL_ACCESSORIES.forEach((acc, i) => {
+      const ax = panelX + 90 + i * 80;
+      const isOwned = this.isItemOwned("accessory", acc.value);
+      const isActive = this.currentAccessory === acc.value;
+
+      const accBg = this.add.graphics();
+      accBg.fillStyle(isOwned ? 0x44318d : 0x222222, 0.8);
+      accBg.fillRoundedRect(ax, accY, 72, 32, 6);
+      if (isActive) {
+        accBg.lineStyle(2, COLORS.WARM_GOLD, 1);
+        accBg.strokeRoundedRect(ax, accY, 72, 32, 6);
+      }
+
+      const labelText = isOwned ? acc.label.split(" ")[0] : `🔒 ${acc.label.split(" ")[0]}`;
+      const accText = this.add.text(ax + 36, accY + 16, labelText, {
+        fontFamily: "Nunito, sans-serif",
+        fontSize: "11px",
+        color: isOwned ? (isActive ? "#ffd700" : "#c4b5fd") : "#666666",
+      }).setOrigin(0.5);
+
+      if (isOwned) {
+        accText.setInteractive({ useHandCursor: true });
+        accText.on("pointerdown", () => {
+          this.currentAccessory = acc.value;
+          this.applyChanges();
+          this.scene.restart();
+        });
+      }
+    });
+
+    // Tip text
+    this.add.text(panelX + 30, panelY + 560, "💡 Buy hats & accessories from the Cosmetics Boutique!", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "12px",
       color: "#a78bfa",
@@ -214,7 +348,7 @@ export class AvatarScene extends Phaser.Scene {
 
     // Save button
     const saveBtnX = width / 2 - 60;
-    const saveBtnY = panelY + panelH - 50;
+    const saveBtnY = panelY + panelH - 45;
     const saveBtn = this.add.graphics();
     saveBtn.fillStyle(COLORS.WARM_GOLD, 0.3);
     saveBtn.fillRoundedRect(saveBtnX, saveBtnY, 120, 36, 8);
@@ -238,6 +372,17 @@ export class AvatarScene extends Phaser.Scene {
     });
   }
 
+  private isItemOwned(category: string, value: string): boolean {
+    const shopItems: any[] = this.registry.get("shopItems") || [];
+    // Check if any owned item matches this category and value
+    for (const item of shopItems) {
+      if (item.category === category && item.value === value && this.ownedItemIds.includes(item.id)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private drawPreview(cx: number, cy: number): void {
     const g = this.previewGraphics;
     g.clear();
@@ -246,7 +391,7 @@ export class AvatarScene extends Phaser.Scene {
     const hairColor = Phaser.Display.Color.HexStringToColor(this.currentHair).color;
     const outfitColor = Phaser.Display.Color.HexStringToColor(this.currentOutfit).color;
 
-    // Scale up for preview (2x)
+    // Scale up for preview (2.5x)
     const s = 2.5;
 
     // Shadow
@@ -261,14 +406,14 @@ export class AvatarScene extends Phaser.Scene {
     g.fillStyle(skinColor);
     g.fillCircle(cx, cy - 14 * s, 12 * s);
 
-    // Hair
+    // Hair — just the top part
     g.fillStyle(hairColor);
-    g.fillRoundedRect(cx - 10 * s, cy - 26 * s, 20 * s, 14 * s, 6 * s);
+    g.fillRoundedRect(cx - 10 * s, cy - 26 * s, 20 * s, 12 * s, 6 * s);
 
-    // Eyes
+    // Eyes — on the face (below hair), matching Bug 4 fix
     g.fillStyle(0x000000);
-    g.fillCircle(cx - 4 * s, cy - 14 * s, 2 * s);
-    g.fillCircle(cx + 4 * s, cy - 14 * s, 2 * s);
+    g.fillCircle(cx - 4 * s, cy - 10 * s, 2 * s);
+    g.fillCircle(cx + 4 * s, cy - 10 * s, 2 * s);
 
     // Gold belt
     g.fillStyle(COLORS.WARM_GOLD);

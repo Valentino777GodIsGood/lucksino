@@ -12,8 +12,8 @@ const COLORS = {
   GOLD_DIM: 0xb8860b,
   WHITE: 0xffffff,
   BLACK: 0x000000,
-  TILE_LIGHT: 0xf0f0f0,
-  TILE_DARK: 0x1a1a1a,
+  TILE_LIGHT: 0x3d2b79,
+  TILE_DARK: 0x2d1b69,
   CARPET_PURPLE: 0x3d2176,
   SLOT_RED: 0xff4757,
   PLINKO_TEAL: 0x2ed573,
@@ -27,6 +27,8 @@ interface PlayerSprite {
   nameText: Phaser.GameObjects.Text;
   lastX: number;
   lastY: number;
+  targetX: number;
+  targetY: number;
 }
 
 export class CasinoScene extends Phaser.Scene {
@@ -173,12 +175,12 @@ export class CasinoScene extends Phaser.Scene {
     g.fillStyle(COLORS.DARKER_PURPLE);
     g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    // Checkered marble tile pattern
+    // Checkered tile pattern — clean purple tones (Bug 8 fix)
     const TILE_SIZE = 40;
     for (let row = 0; row < Math.ceil(WORLD_H / TILE_SIZE); row++) {
       for (let col = 0; col < Math.ceil(WORLD_W / TILE_SIZE); col++) {
         const isLight = (row + col) % 2 === 0;
-        g.fillStyle(isLight ? COLORS.TILE_LIGHT : COLORS.TILE_DARK, isLight ? 0.12 : 0.15);
+        g.fillStyle(isLight ? COLORS.TILE_LIGHT : COLORS.TILE_DARK, 0.5);
         g.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
     }
@@ -525,6 +527,8 @@ export class CasinoScene extends Phaser.Scene {
       nameText,
       lastX: player.x,
       lastY: player.y,
+      targetX: player.x,
+      targetY: player.y,
     });
   }
 
@@ -541,19 +545,19 @@ export class CasinoScene extends Phaser.Scene {
     g.fillStyle(outfitHex);
     g.fillRoundedRect(-10, -5, 20, 22, 6);
 
-    // Head (skin tone)
+    // Head (skin tone) — face circle
     g.fillStyle(skinHex);
     g.fillCircle(0, -14, 12);
 
-    // Hair (hair color)
+    // Hair (hair color) — only the top portion of the head
     g.fillStyle(hairHex);
-    g.fillRoundedRect(-10, -26, 20, 14, 6);
+    g.fillRoundedRect(-10, -26, 20, 12, 6);
 
-    // Eyes
+    // Eyes — positioned on the face, below the hair line (Bug 4 fix)
     const eyeOffsetX = direction === "left" ? -4 : direction === "right" ? 4 : 0;
     g.fillStyle(0x000000);
-    g.fillCircle(-4 + eyeOffsetX, -14, 2);
-    g.fillCircle(4 + eyeOffsetX, -14, 2);
+    g.fillCircle(-4 + eyeOffsetX, -10, 2);
+    g.fillCircle(4 + eyeOffsetX, -10, 2);
 
     // Outfit trim (gold belt)
     g.fillStyle(COLORS.WARM_GOLD);
@@ -581,11 +585,9 @@ export class CasinoScene extends Phaser.Scene {
     const sprite = this.players.get(sessionId);
     if (!sprite) return;
 
-    // Smooth interpolation
-    const targetX = player.x;
-    const targetY = player.y;
-    sprite.container.x += (targetX - sprite.container.x) * 0.3;
-    sprite.container.y += (targetY - sprite.container.y) * 0.3;
+    // Store target for smooth lerp in update loop
+    sprite.targetX = player.x;
+    sprite.targetY = player.y;
 
     // Update coin display if this is our player
     if (sessionId === this.mySessionId) {
@@ -791,6 +793,20 @@ export class CasinoScene extends Phaser.Scene {
         animFrame: this.animFrame,
       });
     }
+
+    // Smooth interpolation for all player sprites (Bug 9 fix)
+    const lerpFactor = 1 - Math.pow(0.001, delta / 1000); // Frame-rate independent lerp
+    this.players.forEach((sprite, sessionId) => {
+      if (sessionId === this.mySessionId) {
+        // Local player: snap directly
+        sprite.container.x = this.playerX;
+        sprite.container.y = this.playerY;
+      } else {
+        // Remote players: smooth lerp toward target
+        sprite.container.x += (sprite.targetX - sprite.container.x) * lerpFactor;
+        sprite.container.y += (sprite.targetY - sprite.container.y) * lerpFactor;
+      }
+    });
 
     // Check machine proximity
     this.checkMachineProximity();

@@ -68,15 +68,15 @@ export class SlotScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     closeBtn.on("pointerdown", () => this.closeGame());
 
-    // Reel area
+    // Reel area — increased cell height to prevent clipping
     const reelAreaY = panelY + 80;
     const reelW = 100;
-    const reelH = 120;
+    const reelH = 140; // Increased from 120 to give more vertical room
     const reelGap = 20;
     const totalReelW = reelW * 3 + reelGap * 2;
     const reelStartX = cx - totalReelW / 2;
 
-    // Reel background
+    // Reel background — taller to accommodate
     const reelBg = this.add.graphics();
     reelBg.fillStyle(COLORS.REEL_BG, 1);
     reelBg.fillRoundedRect(reelStartX - 15, reelAreaY, totalReelW + 30, reelH + 20, 12);
@@ -94,11 +94,13 @@ export class SlotScene extends Phaser.Scene {
       reelSlot.lineStyle(1, COLORS.GOLD, 0.4);
       reelSlot.strokeRoundedRect(rx, ry, reelW, reelH, 8);
 
+      // Center the container within the taller reel cell
       const container = this.add.container(rx + reelW / 2, ry + reelH / 2);
       this.reelContainers.push(container);
 
       const symbolText = this.add.text(0, 0, "🎰", {
         fontSize: "48px",
+        padding: { top: 8, bottom: 8 },
       }).setOrigin(0.5);
       container.add(symbolText);
       this.reelTexts.push(symbolText);
@@ -192,7 +194,7 @@ export class SlotScene extends Phaser.Scene {
 
     // Balance display
     const room = colyseusClient.getRoom();
-    const myPlayer = room?.state.players.get(room.sessionId);
+    const myPlayer = room?.state.players.get(room!.sessionId);
     const coins = myPlayer?.coins || 0;
     this.balanceText = this.add.text(cx, panelY + panelH - 30, `Balance: 🪙 ${coins}`, {
       fontFamily: "Nunito, sans-serif",
