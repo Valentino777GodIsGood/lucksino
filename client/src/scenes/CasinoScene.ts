@@ -497,7 +497,7 @@ export class CasinoScene extends Phaser.Scene {
 
     // Chibi body
     const body = this.add.graphics();
-    this.drawChibiCharacter(body, player.outfitColor, player.hairColor || "#4a3728", player.skinTone || "#ffdbac", player.hat || "none", player.direction);
+    this.drawChibiCharacter(body, player.outfitColor, player.hairColor || "#4a3728", player.skinTone || "#ffdbac", player.hat || "none", player.direction, player.accessory || "none");
 
     // Name tag
     const nameText = this.add.text(0, -35, player.name, {
@@ -532,7 +532,7 @@ export class CasinoScene extends Phaser.Scene {
     });
   }
 
-  private drawChibiCharacter(g: Phaser.GameObjects.Graphics, outfitColor: string, hairColor: string, skinTone: string, hat: string, direction: string): void {
+  private drawChibiCharacter(g: Phaser.GameObjects.Graphics, outfitColor: string, hairColor: string, skinTone: string, hat: string, direction: string, accessory: string = "none"): void {
     const outfitHex = Phaser.Display.Color.HexStringToColor(outfitColor).color;
     const hairHex = Phaser.Display.Color.HexStringToColor(hairColor).color;
     const skinHex = Phaser.Display.Color.HexStringToColor(skinTone).color;
@@ -563,20 +563,53 @@ export class CasinoScene extends Phaser.Scene {
     g.fillStyle(COLORS.WARM_GOLD);
     g.fillRect(-10, 5, 20, 3);
 
-    // Hat indicator
+    // Hat — drawn as graphics on top of head
     if (hat && hat !== "none") {
       if (hat === "crown") {
         g.fillStyle(COLORS.WARM_GOLD);
-        g.fillTriangle(-6, -30, 0, -36, 6, -30);
-        g.fillRect(-6, -30, 12, 4);
+        // Base band
+        g.fillRect(-7, -29, 14, 4);
+        // 3 pointed spikes
+        g.fillTriangle(-6, -29, -4, -35, -2, -29);
+        g.fillTriangle(-2, -29, 0, -37, 2, -29);
+        g.fillTriangle(2, -29, 4, -35, 6, -29);
       } else if (hat === "tophat") {
         g.fillStyle(0x1a1a1a);
-        g.fillRect(-7, -36, 14, 12);
-        g.fillRect(-9, -26, 18, 4);
+        // Tall cylinder
+        g.fillRect(-6, -40, 12, 14);
+        // Wide brim
+        g.fillRect(-9, -26, 18, 3);
       } else if (hat === "bunny") {
         g.fillStyle(0xffc0cb);
-        g.fillEllipse(-5, -34, 4, 10);
-        g.fillEllipse(5, -34, 4, 10);
+        // Two tall pink oval ears
+        g.fillEllipse(-5, -36, 5, 12);
+        g.fillEllipse(5, -36, 5, 12);
+        // Inner ear (lighter pink)
+        g.fillStyle(0xffe4e9);
+        g.fillEllipse(-5, -36, 3, 8);
+        g.fillEllipse(5, -36, 3, 8);
+      }
+    }
+
+    // Accessory — drawn as graphics on face area
+    if (accessory && accessory !== "none") {
+      if (accessory === "sunglasses" || accessory === "glasses") {
+        g.lineStyle(1, 0x000000, 1);
+        // Left lens
+        g.strokeCircle(-4 + eyeOffsetX, -10, 3);
+        // Right lens
+        g.strokeCircle(4 + eyeOffsetX, -10, 3);
+        // Bridge connecting lenses
+        g.lineBetween(-1 + eyeOffsetX, -10, 1 + eyeOffsetX, -10);
+        // Side arms (small lines)
+        g.lineBetween(-7 + eyeOffsetX, -10, -7 + eyeOffsetX, -9);
+        g.lineBetween(7 + eyeOffsetX, -10, 7 + eyeOffsetX, -9);
+      } else if (accessory === "monocle") {
+        g.lineStyle(1, 0x8b7355, 1);
+        // Single circle over right eye
+        g.strokeCircle(4 + eyeOffsetX, -10, 3.5);
+        // Chain/line dropping down
+        g.lineBetween(4 + eyeOffsetX, -6.5, 4 + eyeOffsetX, 0);
       }
     }
   }
@@ -614,7 +647,8 @@ export class CasinoScene extends Phaser.Scene {
         player.hairColor || "#4a3728",
         player.skinTone || "#ffdbac",
         player.hat || "none",
-        player.direction
+        player.direction,
+        player.accessory || "none"
       );
       sprite.lastX = player.x;
       sprite.lastY = player.y;

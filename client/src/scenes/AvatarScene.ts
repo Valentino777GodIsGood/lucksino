@@ -431,16 +431,66 @@ export class AvatarScene extends Phaser.Scene {
     g.fillStyle(COLORS.WARM_GOLD);
     g.fillRect(cx - 10 * s, cy + 5 * s, 20 * s, 3 * s);
 
-    // Hat indicator
+    // Hat — drawn as graphics on top of head
     if (this.currentHat !== "none") {
-      const hatEmoji = this.currentHat === "crown" ? "👑" : this.currentHat === "tophat" ? "🎩" : "🐰";
-      this.add.text(cx, cy - 35 * s, hatEmoji, { fontSize: "28px" }).setOrigin(0.5);
+      if (this.currentHat === "crown") {
+        g.fillStyle(COLORS.WARM_GOLD);
+        // Base band
+        g.fillRect(cx - 7 * s, cy - 29 * s, 14 * s, 4 * s);
+        // 3 pointed spikes
+        g.fillTriangle(
+          cx - 6 * s, cy - 29 * s,
+          cx - 4 * s, cy - 35 * s,
+          cx - 2 * s, cy - 29 * s
+        );
+        g.fillTriangle(
+          cx - 2 * s, cy - 29 * s,
+          cx, cy - 37 * s,
+          cx + 2 * s, cy - 29 * s
+        );
+        g.fillTriangle(
+          cx + 2 * s, cy - 29 * s,
+          cx + 4 * s, cy - 35 * s,
+          cx + 6 * s, cy - 29 * s
+        );
+      } else if (this.currentHat === "tophat") {
+        g.fillStyle(0x1a1a1a);
+        // Tall cylinder
+        g.fillRect(cx - 6 * s, cy - 40 * s, 12 * s, 14 * s);
+        // Wide brim
+        g.fillRect(cx - 9 * s, cy - 26 * s, 18 * s, 3 * s);
+      } else if (this.currentHat === "bunny") {
+        g.fillStyle(0xffc0cb);
+        // Two tall pink oval ears
+        g.fillEllipse(cx - 5 * s, cy - 36 * s, 5 * s, 12 * s);
+        g.fillEllipse(cx + 5 * s, cy - 36 * s, 5 * s, 12 * s);
+        // Inner ear (lighter pink)
+        g.fillStyle(0xffe4e9);
+        g.fillEllipse(cx - 5 * s, cy - 36 * s, 3 * s, 8 * s);
+        g.fillEllipse(cx + 5 * s, cy - 36 * s, 3 * s, 8 * s);
+      }
     }
 
-    // Accessory indicator
+    // Accessory — drawn as graphics on the face area
     if (this.currentAccessory !== "none") {
-      const accEmoji = this.currentAccessory === "sunglasses" ? "😎" : this.currentAccessory === "monocle" ? "🧐" : "⭐";
-      this.add.text(cx + 20 * s, cy - 14 * s, accEmoji, { fontSize: "16px" }).setOrigin(0.5);
+      if (this.currentAccessory === "sunglasses" || this.currentAccessory === "glasses") {
+        g.lineStyle(1.5 * s, 0x000000, 1);
+        // Left lens
+        g.strokeCircle(cx - 4 * s, cy - 10 * s, 3 * s);
+        // Right lens
+        g.strokeCircle(cx + 4 * s, cy - 10 * s, 3 * s);
+        // Bridge
+        g.lineBetween(cx - 1 * s, cy - 10 * s, cx + 1 * s, cy - 10 * s);
+        // Side arms
+        g.lineBetween(cx - 7 * s, cy - 10 * s, cx - 7 * s, cy - 9 * s);
+        g.lineBetween(cx + 7 * s, cy - 10 * s, cx + 7 * s, cy - 9 * s);
+      } else if (this.currentAccessory === "monocle") {
+        g.lineStyle(1.5 * s, 0x8b7355, 1);
+        // Single circle over right eye
+        g.strokeCircle(cx + 4 * s, cy - 10 * s, 3.5 * s);
+        // Chain dropping down
+        g.lineBetween(cx + 4 * s, cy - 6.5 * s, cx + 4 * s, cy);
+      }
     }
   }
 
