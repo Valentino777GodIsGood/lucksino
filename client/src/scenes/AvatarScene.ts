@@ -49,24 +49,36 @@ export class AvatarScene extends Phaser.Scene {
   private currentAccessory: string = "none";
   private currentHat: string = "none";
   private ownedItemIds: string[] = [];
+  private isRestarting: boolean = false;
 
   constructor() {
     super({ key: "AvatarScene" });
   }
 
+  init(data?: { local?: boolean }): void {
+    // If restarting with local state, skip overwriting from room state
+    if (data && data.local) {
+      this.isRestarting = true;
+    } else {
+      this.isRestarting = false;
+    }
+  }
+
   create(): void {
     const { width, height } = this.cameras.main;
 
-    // Load current avatar from room state
-    const room = colyseusClient.getRoom();
-    if (room) {
-      const myPlayer = room.state.players.get(room.sessionId);
-      if (myPlayer) {
-        this.currentOutfit = myPlayer.outfitColor;
-        this.currentHair = myPlayer.hairColor;
-        this.currentSkin = myPlayer.skinTone;
-        this.currentAccessory = myPlayer.accessory || "none";
-        this.currentHat = myPlayer.hat || "none";
+    // Only load from room state on fresh open, not on local UI restarts
+    if (!this.isRestarting) {
+      const room = colyseusClient.getRoom();
+      if (room) {
+        const myPlayer = room.state.players.get(room.sessionId);
+        if (myPlayer) {
+          this.currentOutfit = myPlayer.outfitColor;
+          this.currentHair = myPlayer.hairColor;
+          this.currentSkin = myPlayer.skinTone;
+          this.currentAccessory = myPlayer.accessory || "none";
+          this.currentHat = myPlayer.hat || "none";
+        }
       }
     }
 
@@ -105,7 +117,7 @@ export class AvatarScene extends Phaser.Scene {
       color: "#ff6b6b",
       fontStyle: "bold",
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    closeBtn.on("pointerdown", () => this.closeAvatar());
+    closeBtn.on("pointerup", () => this.closeAvatar());
 
     // Preview area
     this.previewGraphics = this.add.graphics();
@@ -133,10 +145,10 @@ export class AvatarScene extends Phaser.Scene {
       }
 
       const hitArea = this.add.zone(sx + 18, sy + 18, 36, 36).setInteractive({ useHandCursor: true });
-      hitArea.on("pointerdown", () => {
+      hitArea.on("pointerup", () => {
         this.currentSkin = skin.value;
         this.applyChanges();
-        this.scene.restart();
+        this.scene.restart({ local: true });
       });
     });
 
@@ -173,10 +185,10 @@ export class AvatarScene extends Phaser.Scene {
       }
 
       const hitArea = this.add.zone(sx + 18, sy + 18, 36, 36).setInteractive({ useHandCursor: true });
-      hitArea.on("pointerdown", () => {
+      hitArea.on("pointerup", () => {
         this.currentHair = hair.value;
         this.applyChanges();
-        this.scene.restart();
+        this.scene.restart({ local: true });
       });
     });
 
@@ -212,14 +224,14 @@ export class AvatarScene extends Phaser.Scene {
       }
 
       const hitArea = this.add.zone(sx + 18, sy + 18, 36, 36).setInteractive({ useHandCursor: true });
-      hitArea.on("pointerdown", () => {
+      hitArea.on("pointerup", () => {
         this.currentOutfit = color;
         this.applyChanges();
-        this.scene.restart();
+        this.scene.restart({ local: true });
       });
     });
 
-    // === Hat Section (Bug 6 & 7 fix) ===
+    // === Hat Section ===
     this.add.text(panelX + 30, panelY + 420, "Hat", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "14px",
@@ -227,7 +239,7 @@ export class AvatarScene extends Phaser.Scene {
       fontStyle: "bold",
     });
 
-    // "None" option
+    // "None" option for hat
     const noneHatX = panelX + 30;
     const hatY = panelY + 445;
     const noneHatBg = this.add.graphics();
@@ -243,10 +255,10 @@ export class AvatarScene extends Phaser.Scene {
       fontSize: "11px",
       color: hatNoneSelected ? "#ffd700" : "#c4b5fd",
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    noneHatText.on("pointerdown", () => {
+    noneHatText.on("pointerup", () => {
       this.currentHat = "none";
       this.applyChanges();
-      this.scene.restart();
+      this.scene.restart({ local: true });
     });
 
     ALL_HATS.forEach((hat, i) => {
@@ -271,15 +283,15 @@ export class AvatarScene extends Phaser.Scene {
 
       if (isOwned) {
         hatText.setInteractive({ useHandCursor: true });
-        hatText.on("pointerdown", () => {
+        hatText.on("pointerup", () => {
           this.currentHat = hat.value;
           this.applyChanges();
-          this.scene.restart();
+          this.scene.restart({ local: true });
         });
       }
     });
 
-    // === Accessory Section (Bug 6 & 7 fix) ===
+    // === Accessory Section ===
     this.add.text(panelX + 30, panelY + 490, "Accessory", {
       fontFamily: "Nunito, sans-serif",
       fontSize: "14px",
@@ -288,7 +300,7 @@ export class AvatarScene extends Phaser.Scene {
     });
 
     const accY = panelY + 515;
-    // "None" option
+    // "None" option for accessory
     const noneAccBg = this.add.graphics();
     const accNoneSelected = this.currentAccessory === "none";
     noneAccBg.fillStyle(0x44318d, 0.8);
@@ -302,10 +314,10 @@ export class AvatarScene extends Phaser.Scene {
       fontSize: "11px",
       color: accNoneSelected ? "#ffd700" : "#c4b5fd",
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    noneAccText.on("pointerdown", () => {
+    noneAccText.on("pointerup", () => {
       this.currentAccessory = "none";
       this.applyChanges();
-      this.scene.restart();
+      this.scene.restart({ local: true });
     });
 
     ALL_ACCESSORIES.forEach((acc, i) => {
@@ -330,10 +342,10 @@ export class AvatarScene extends Phaser.Scene {
 
       if (isOwned) {
         accText.setInteractive({ useHandCursor: true });
-        accText.on("pointerdown", () => {
+        accText.on("pointerup", () => {
           this.currentAccessory = acc.value;
           this.applyChanges();
-          this.scene.restart();
+          this.scene.restart({ local: true });
         });
       }
     });
@@ -361,7 +373,7 @@ export class AvatarScene extends Phaser.Scene {
       color: "#ffd700",
       fontStyle: "bold",
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    saveText.on("pointerdown", () => {
+    saveText.on("pointerup", () => {
       this.applyChanges();
       this.closeAvatar();
     });
